@@ -11,82 +11,52 @@ sequenceDiagram
     participant TaskGraph
     participant CascadePool
     participant Worker
-    participant WorkStealingQueue as Worker Queue (WorkStealing)
-    participant GlobalMPMC as Global Shard (BoundedMPMC)
-    participant MemoryArena
-    participant QSBRDomain
+    participant WorkStealingQueue as Worker Queue
+    participant NotificationMgr
 
-    Note over TaskGraph: token = one node execution<br/>max_concurrency limits parallel workers per node
+    Note over TaskGraph: token = one node execution
 
     User->>TaskScope: submit(task, options)
     TaskScope->>TaskGraph: add_node(task, NodeOptions)
-    TaskGraph->>TaskGraph: store node in nodes_
 
     User->>TaskScope: run()
     TaskScope->>TaskGraph: run()
-    TaskGraph->>TaskGraph: seal() (cycle check)
-    TaskGraph->>TaskGraph: reset() & prime tokens (sources)
+    TaskGraph->>TaskGraph: seal() & prime tokens
 
     loop For each ready node token
         TaskGraph->>CascadePool: submit(node fun, SubmitOptions)
-        alt submit called from worker thread
+        alt submit from worker thread
             CascadePool->>WorkStealingQueue: push_bottom(task) on current worker
-        else submit called from external thread
-            alt affinity set
-                CascadePool->>GlobalMPMC: push(task) to affinity shard
+        else submit from external thread
+            alt affinity specified
+                CascadePool->>WorkStealingQueue: push_bottom(task) to target worker
             else no affinity
-                CascadePool->>GlobalMPMC: push(task) round-robin shards
+                CascadePool->>WorkStealingQueue: push_bottom(task) round-robin workers
             end
         end
+        CascadePool->>NotificationMgr: notify_worker() [rate-limited]
     end
 
     par Worker scheduling loop
         Worker->>WorkStealingQueue: pop_bottom()
         alt Got local task
-            Worker->>MemoryArena: allocate task memory if needed
-            Worker->>Worker: execute task (node token)
+            Worker->>Worker: execute task
         else No local task
-            Worker->>WorkStealingQueue: steal_batch() from other workers
+            Worker->>WorkStealingQueue: steal_batch() from random worker
             alt Steal successful
-                Worker->>Worker: execute stolen tasks (aging HI→LO priority)
+                Worker->>Worker: execute stolen tasks
             else Steal failed
-                Worker->>GlobalMPMC: pop_batch()
-                alt Got tasks from global
-                    Worker->>Worker: execute tasks
-                else No tasks
-                    Worker->>Worker: exponential backoff
-                    Worker->>QSBRDomain: advance_epoch()  %% periodic reclamation
-                end
+                Worker->>Worker: exponential backoff
+                Worker->>NotificationMgr: check_pending_notifications()
             end
         end
     and Node execution
-        Worker->>TaskGraph: run node fn for one token
-        alt fn throws
-            TaskGraph->>TaskGraph: capture exception & set cancel=true
-        else fn ok
-            TaskGraph->>TaskGraph: normal completion
+        Worker->>TaskGraph: run node fn
+        Worker->>TaskGraph: update dependencies
+        alt successors ready
+            TaskGraph->>CascadePool: submit successor tokens
         end
-        TaskGraph->>TaskGraph: queued--, inflight--
-        Worker->>TaskGraph: for each successor: preds_remain--
-        alt successor became ready (preds_remain==0)
-            TaskGraph->>TaskGraph: prime successor tokens
-            TaskGraph->>CascadePool: submit(...) for successor tokens
-        end
-        TaskGraph->>CascadePool: complete_counter()
-        alt inbox not empty AND inflight < max_concurrency AND !cancel
-            TaskGraph->>CascadePool: reschedule same node
-        end
-        Worker->>MemoryArena: deallocate task (remote free list)
     end
-
-    rect rgb(250,250,250)
-    note over TaskGraph: Three-tier memory allocation:<br/>Bump pointer → Local free → Remote free<br/>QSBR reclamation for cross-thread chunks
-    end
-
-    note over GlobalMPMC,QSBRDomain: QSBR used in MPMC queues and memory arenas<br/>for safe reclamation of retired chunks
-
-    CascadePool->>TaskScope: Handle::Counter reaches zero
-    TaskScope->>User: wait() completes
 ```
 
 ### Why Not TBB/Other Runtimes(Goals of project)
