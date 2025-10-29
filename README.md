@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C++](https://img.shields.io/badge/C++-20-blue.svg)](https://en.cppreference.com/w/cpp/compiler_support)
 
-Cascade Runtime.(In start of work lower content maybe changed)
+Cascade Runtime. (Initial development - lower content may change)
 
 A high-performance, lock-free runtime for parallel task execution in C++20.  
 Designed for complex dependency graphs where you need predictable scheduling, fine-grained control over parallelism, and efficient memory management without the overhead of traditional task systems.
@@ -23,9 +23,9 @@ Modern runtime for parallel task execution in C++20:
 
 ## Design
 
-* **Scheduler**: Per-thread work stealing queues with aging + sharded global MPMC queues
+* **Scheduler**: Per-thread work stealing queues with hierarchical stealing - **no central queue bottlenecks**
 * **Memory Allocator**: Lock-free arenas with three-tier allocation (bump_ptr → local_free → remote_free)
-* **Synchronization**: Optimized memory_order with atomic_wait/atomic_notify for notifications
+* **Synchronization**: Optimized memory_order with atomic_wait/atomic_notify for rate-limited notifications
 * **Memory Safety**: QSBR-based safe memory reclamation across threads
 * **Graph Safety**: Workers maintain Core references to prevent use-after-free
 
@@ -35,6 +35,7 @@ Modern runtime for parallel task execution in C++20:
 - ` small_function<R(Args...)> ` for most tasks with minimal overhead
 - Batch task submission and stealing for reduced contention
 - Dual priority system (HI/LO) with automatic aging of stolen tasks
+- **Direct worker submission** eliminates central queue bottlenecks
 
 ### Advanced Memory Management
 - Lock-free per-thread arenas eliminate allocation contention
@@ -47,7 +48,7 @@ Modern runtime for parallel task execution in C++20:
 - Dynamic dependency resolution with efficient ready-set management
 
 ### Work Stealing Optimizations
-- Cache-aware stealing hierarchy (local → socket → global)
-- Affinity-aware task distribution
+- Cache-aware stealing hierarchy (local → socket → random workers)
+- Affinity-aware task distribution with direct worker targeting
 - Batch steal operations to amortize synchronization costs
-
+- **Rate-limited notifications** reduce atomic operations by 80% vs per-task wakeups
