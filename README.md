@@ -32,7 +32,7 @@ Modern runtime for parallel task execution in C++20:
 ## Features
 
 ### Efficient Task Management
-- `small_function<void(), 64>` for most tasks with minimal overhead
+- ` small_function<R(Args...)> ` for most tasks with minimal overhead
 - Batch task submission and stealing for reduced contention
 - Dual priority system (HI/LO) with automatic aging of stolen tasks
 
