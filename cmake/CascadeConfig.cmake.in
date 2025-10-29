@@ -1,0 +1,26 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+include("${CMAKE_CURRENT_LIST_DIR}/CascadeTargets.cmake")
+
+check_required_components(Cascade)
+
+set(Cascade_FOUND TRUE)
+set(Cascade_VERSION @PROJECT_VERSION@)
+
+# Helper function for users
+function(cascade_enable_cxx_standard target)
+    target_compile_features(${target} PRIVATE cxx_std_23)
+endfunction()
+
+# Helper to link Cascade
+function(cascade_link_target target)
+    if(TARGET Cascade::Cascade)
+        target_link_libraries(${target} PRIVATE Cascade::Cascade)
+    elseif(TARGET Cascade::CascadeStatic)  
+        target_link_libraries(${target} PRIVATE Cascade::CascadeStatic)
+    else()
+        message(FATAL_ERROR "No Cascade target found")
+    endif()
+endfunction()
