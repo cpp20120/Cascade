@@ -7,6 +7,8 @@
 
 namespace cascade::memory {
 
+constexpr int CHUNK_COUNT = 4;
+
 struct Chunk {
   std::atomic<Chunk*> next;
   std::size_t capacity_bytes;

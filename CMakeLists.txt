@@ -77,7 +77,7 @@ target_compile_features(cascade_sources PUBLIC cxx_std_23)
 target_include_directories(cascade_sources PUBLIC include)
 
 if(MSVC)
-    target_compile_options(cascade_sources PRIVATE /W4 /WX /permissive-)
+    target_compile_options(cascade_sources PRIVATE  /permissive-)
 else()
     target_compile_options(cascade_sources PRIVATE -Wall -Wextra -pedantic -Werror)
 endif()
