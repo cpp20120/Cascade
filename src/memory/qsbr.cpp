@@ -1,9 +1,10 @@
-#include "../../include/memory/qsbr.hpp"
 
 #include <algorithm>
 #include <stdexcept>
 
-#include "../../include/memory/global_reservoir.hpp"
+
+#include <memory/qsbr.hpp>
+#include <memory/global_reservoir.hpp>
 
 namespace cascade::memory {
 

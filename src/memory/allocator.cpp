@@ -1,5 +1,6 @@
-#include "../../include/memory/allocator.hpp"
 
+#include <memory/allocator.hpp>
+#include <memory/arena.hpp>
 #include <mutex>
 #include <stdexcept>
 

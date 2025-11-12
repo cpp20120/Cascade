@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cstring>
 
-#include "../../include/memory/config.hpp"
+#include <memory/config.hpp>
 
 namespace cascade::memory {
 
@@ -28,18 +28,15 @@ LockFreeArena::~LockFreeArena() {
 
 void* LockFreeArena::allocate(std::size_t size,
 							  std::size_t alignment) noexcept {
-  // Try local free list first
   if (void* obj = pop_local_free()) {
 	return obj;
   }
 
-  // Drain remote objects
   drain_remote();
   if (void* obj = pop_local_free()) {
 	return obj;
   }
 
-  // Bump allocation from current chunk
   void* obj = bump_allocate(size, alignment);
   if (!obj) {
 	refill_chunk();
@@ -82,7 +79,6 @@ void LockFreeArena::drain_remote() noexcept {
   void* head = remote_list_.exchange(nullptr, std::memory_order_acq_rel);
   if (!head) return;
 
-  // Reverse the list to maintain LIFO order
   void* reversed = nullptr;
   void* current = head;
 
@@ -95,7 +91,6 @@ void LockFreeArena::drain_remote() noexcept {
 	current = next;
   }
 
-  // Add to local free list
   current = reversed;
   while (current) {
 	ObjectHeader* header = ObjectHeader::from_payload(current);
@@ -132,14 +127,12 @@ void* LockFreeArena::bump_allocate(std::size_t size,
 	std::byte* chunk_data = reinterpret_cast<std::byte*>(chunk + 1);
 	std::byte* object_start = chunk_data + current_used + sizeof(ObjectHeader);
 
-	// Apply alignment
 	std::size_t misalignment =
 		reinterpret_cast<uintptr_t>(object_start) % alignment;
 	if (misalignment != 0) {
 	  object_start += alignment - misalignment;
 	}
 
-	// Set up object header
 	ObjectHeader* header =
 		reinterpret_cast<ObjectHeader*>(object_start - sizeof(ObjectHeader));
 	header->chunk_ptr = chunk;
@@ -149,7 +142,6 @@ void* LockFreeArena::bump_allocate(std::size_t size,
 
 	void* payload = ObjectHeader::to_payload(header);
 
-	// Update chunk metadata
 	chunk->active_count.fetch_add(1, std::memory_order_acq_rel);
 	chunk->owner_id.store(owner_id_, std::memory_order_release);
 

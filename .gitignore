@@ -43,3 +43,4 @@ doxygen_output
 .vs
 .vscode
 .idea
+.cache

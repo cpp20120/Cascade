@@ -1,8 +1,7 @@
-#include "../../include/memory/chunk.hpp"
-
 #include <cstddef>
 
-#include "cascade/memory/config.hpp"
+#include <memory/chunk.hpp>
+#include <memory/config.hpp>
 
 
 namespace cascade::memory {
