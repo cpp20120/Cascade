@@ -53,7 +53,7 @@ constexpr std::size_t hash_string(const char* str, std::size_t h = 0) {
   return (*str == '\0') ? h : hash_string(str + 1, (h * 131) + *str);
 }
 
-// Type name demangling (simplified - returns mangled name)
+// Type name demangling 
 template <typename T>
 constexpr const char* get_type_name() {
 #ifdef _MSC_VER
@@ -72,7 +72,47 @@ constexpr type_index get_type_index() noexcept {
   return type_index{detail::get_type_name<T>(),
 					detail::hash_string(detail::get_type_name<T>())};
 }
-
+/**
+ /**
+ * @brief Small, move-only function wrapper with small-buffer optimization
+ * 
+ * @tparam R Return type of the function signature
+ * @tparam Args Argument types of the function signature  
+ * @tparam StorageSize Size of the inline storage in bytes (default: 64)
+ *
+ * @details
+ * This class provides a lightweight, move-only function wrapper that stores
+ * callable objects inline when possible, avoiding dynamic allocation for
+ * small objects. It supports any callable type (functions, lambdas, function
+ * objects) that matches the specified signature and fits within the storage.
+ *
+ * ## Key Features:
+ * - **Move-only semantics**: Prevents slicing and enables efficient implementation
+ * - **Small Buffer Optimization (SBO)**: No heap allocation for small callables
+ * - **Type erasure**: Stores any callable with matching signature
+ * - **Type information**: Runtime type queries without RTTI
+ * - **Exception safety**: Strong exception guarantee for emplace operations
+ *
+ * ## Storage Requirements:
+ * The callable object must satisfy:
+ * - `sizeof(Callable) <= StorageSize`
+ * - `alignof(Callable) <= alignof(std::max_align_t)`
+ * - Must be invocable with the function signature
+ *
+ * ## Performance Characteristics:
+ * - Construction: O(1) with SBO, no allocation for fitting types
+ * - Move construction/assignment: O(1), just pointer swaps with SBO
+ * - Invocation: One indirect function call overhead
+ * - Destruction: O(1), trivial for trivially destructible types
+ *
+ * @note This class is not copyable. Use std::ref or lambda captures for
+ *       shared callable semantics.
+ *
+ * @see small_function32
+ * @see small_function64  
+ * @see small_function128
+ * @see swap(small_function&, small_function&)
+ */
 template <typename Sig, std::size_t StorageSize = 64>
 class small_function;
 
