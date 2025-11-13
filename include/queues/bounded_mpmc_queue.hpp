@@ -5,8 +5,8 @@
 #include <cstdint>
 #include <new>
 
-#include "../include/memory/allocator.hpp"
-#include "../include/memory/config.hpp"
+#include "../memory/allocator.hpp"
+#include "../memory/config.hpp"
 
 
 namespace cascade::memory {
